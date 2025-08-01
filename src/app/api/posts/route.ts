@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Posts API called');
     console.log('📡 MONGODB_URI exists:', !!process.env.MONGODB_URI);
+    console.log('📡 MONGODB_URI length:', process.env.MONGODB_URI?.length);
     
     await dbConnect();
     console.log('✅ Database connected successfully');
