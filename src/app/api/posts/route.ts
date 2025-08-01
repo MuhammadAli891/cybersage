@@ -4,13 +4,19 @@ import Post from '@/models/Post';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Posts API called');
+    console.log('📡 MONGODB_URI exists:', !!process.env.MONGODB_URI);
+    
     await dbConnect();
+    console.log('✅ Database connected successfully');
     
     const { searchParams } = new URL(request.url);
     const showOnHomepage = searchParams.get('showOnHomepage');
     const limit = parseInt(searchParams.get('limit') || '10');
     const category = searchParams.get('category');
     const all = searchParams.get('all'); // For admin panel
+    
+    console.log('🔍 Query params:', { showOnHomepage, limit, category, all });
     
     // Build query object
     const query: any = {};
@@ -28,6 +34,8 @@ export async function GET(request: NextRequest) {
       query.category = category;
     }
     
+    console.log('🔍 Final query:', query);
+    
     // Build the query
     let postsQuery = Post.find(query).sort({ createdAt: -1 });
     
@@ -40,6 +48,9 @@ export async function GET(request: NextRequest) {
     const posts = await postsQuery
       .lean()
       .select('title slug excerpt featuredImage category author createdAt views published showOnHomepage');
+    
+    console.log('📝 Found posts:', posts.length);
+    console.log('📝 Posts data:', posts);
     
     // Add cache headers only for public requests, but not for homepage requests
     const response = NextResponse.json({ posts });
@@ -55,9 +66,9 @@ export async function GET(request: NextRequest) {
     
     return response;
   } catch (error) {
-    console.error('Error fetching posts:', error);
+    console.error('❌ Error fetching posts:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch posts' },
+      { error: 'Failed to fetch posts', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
