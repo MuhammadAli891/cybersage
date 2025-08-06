@@ -77,7 +77,6 @@ const PostSchema = new mongoose.Schema({
 // Add indexes for better performance
 PostSchema.index({ category: 1, published: 1 });
 PostSchema.index({ showOnHomepage: 1, published: 1 });
-PostSchema.index({ slug: 1 }, { unique: true });
 PostSchema.index({ createdAt: -1 });
 PostSchema.index({ views: -1 });
 

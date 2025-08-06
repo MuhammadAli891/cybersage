@@ -39,6 +39,7 @@ interface Props {
 
 export default function SinglePostPage({ post }: Props) {
   const [relatedPosts, setRelatedPosts] = useState<RelatedPost[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Fetch related posts from same category
@@ -103,6 +104,8 @@ export default function SinglePostPage({ post }: Props) {
               <span className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 bg-clip-text text-transparent text-xl font-extrabold">Sage</span>
             </div>
           </Link>
+          
+          {/* Desktop Navigation */}
           <ul className="hidden md:flex space-x-8 text-sm font-semibold text-white">
             <li><Link href="/category/news" className="hover:text-cyan-300 transition-colors duration-300">News</Link></li>
             <li><Link href="/category/global-tech-news" className="hover:text-cyan-300 transition-colors duration-300">Global Tech News</Link></li>
@@ -112,7 +115,152 @@ export default function SinglePostPage({ post }: Props) {
             <li><Link href="/category/gaming" className="hover:text-cyan-300 transition-colors duration-300">Gaming</Link></li>
             <li><Link href="/category/social-media" className="hover:text-cyan-300 transition-colors duration-300">Social Media</Link></li>
           </ul>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors duration-300"
+          >
+            <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-white text-xl`}></i>
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-50">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black"
+              onClick={() => setIsMobileMenuOpen(false)}
+            ></div>
+            
+            {/* Menu Container */}
+            <div className="absolute right-0 top-0 h-full w-80 bg-gray-900 shadow-2xl border-l border-cyan-300/50 transform transition-transform duration-300 ease-in-out">
+              {/* Menu Header */}
+              <div className="bg-gray-800 p-6 border-b border-cyan-300/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center">
+                      <i className="fas fa-bars text-white text-sm"></i>
+                    </div>
+                    <span className="text-white font-bold text-lg">Menu</span>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-600 transition-colors"
+                  >
+                    <i className="fas fa-times text-white"></i>
+                  </button>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <div className="p-6 space-y-2">
+                <div className="text-cyan-300 text-xs font-semibold uppercase tracking-wider mb-4 px-2">
+                  Categories
+                </div>
+                
+                <Link
+                  href="/category/news"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-newspaper text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">News</div>
+                    <div className="text-cyan-200 text-xs">Latest updates</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/global-tech-news"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-globe text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Global Tech News</div>
+                    <div className="text-cyan-200 text-xs">Worldwide tech</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/internet"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-wifi text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Internet</div>
+                    <div className="text-cyan-200 text-xs">Web & connectivity</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/tech"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-microchip text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Tech</div>
+                    <div className="text-cyan-200 text-xs">Technology insights</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/business"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-briefcase text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Business</div>
+                    <div className="text-cyan-200 text-xs">Business strategies</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/gaming"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-gamepad text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Gaming</div>
+                    <div className="text-cyan-200 text-xs">Gaming industry</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/social-media"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-share-alt text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Social Media</div>
+                    <div className="text-cyan-200 text-xs">Social platforms</div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Main Content - Full White Background */}

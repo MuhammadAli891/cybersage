@@ -5,17 +5,10 @@ import Post from '@/models/Post';
 
 export async function GET() {
   try {
-    console.log('🔍 Categories API called');
-    console.log('📡 MONGODB_URI exists:', !!process.env.MONGODB_URI);
-    console.log('📡 MONGODB_URI length:', process.env.MONGODB_URI?.length);
-    
     await dbConnect();
-    console.log('✅ Database connected successfully');
     
     // Get categories with post count
     const categories = await Category.find({}).sort({ name: 1 });
-    console.log('📂 Found categories:', categories.length);
-    console.log('📂 Categories data:', categories);
     
     // Get post count for each category
     const categoriesWithPostCount = await Promise.all(
@@ -32,15 +25,10 @@ export async function GET() {
       })
     );
     
-    console.log('📊 Categories with post count:', categoriesWithPostCount);
-    
     return NextResponse.json({ categories: categoriesWithPostCount });
   } catch (error) {
-    console.error('❌ Error fetching categories:', error);
-    return NextResponse.json({ 
-      error: 'Failed to fetch categories', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 });
+    console.error('Error fetching categories:', error);
+    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
   }
 }
 

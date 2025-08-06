@@ -63,6 +63,14 @@ export default function PostsList() {
         });
 
         if (response.ok) {
+          // Clear cache after successful deletion
+          try {
+            await fetch('/api/cache/clear', { method: 'POST' });
+            console.log('✅ Cache cleared after post deletion');
+          } catch (cacheError) {
+            console.error('❌ Error clearing cache:', cacheError);
+          }
+          
           setPosts(posts.filter(post => post._id !== postId));
         } else {
           alert('Failed to delete post');

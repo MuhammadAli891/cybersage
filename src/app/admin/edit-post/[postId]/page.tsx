@@ -131,8 +131,7 @@ export default function EditPost() {
     setSaving(true);
 
     try {
-      // Get current content from editor manually
-      const currentContent = editorRef.current?.getCurrentContent() || formData.content;
+      const content = editorRef.current?.getCurrentContent() || formData.content;
       
       const response = await fetch(`/api/post/${postId}`, {
         method: 'PUT',
@@ -141,17 +140,23 @@ export default function EditPost() {
         },
         body: JSON.stringify({
           ...formData,
-          content: currentContent
+          content,
         }),
       });
 
       if (response.ok) {
-        // Only show success message when user actually submits the form
+        // Clear cache after successful update
+        try {
+          await fetch('/api/cache/clear', { method: 'POST' });
+          console.log('✅ Cache cleared after post update');
+        } catch (cacheError) {
+          console.error('❌ Error clearing cache:', cacheError);
+        }
+        
         alert('Post updated successfully!');
         router.push('/admin/posts');
       } else {
-        const error = await response.json();
-        alert(`Failed to update post: ${error.message}`);
+        alert('Failed to update post');
       }
     } catch (error) {
       console.error('Error updating post:', error);

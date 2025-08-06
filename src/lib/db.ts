@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
+import { config } from './config';
 
-const MONGODB_URI = process.env.MONGODB_URI as string;
+const MONGODB_URI = config.MONGODB_URI;
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
@@ -18,14 +19,33 @@ async function dbConnect() {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+    const opts = {
       bufferCommands: false,
-    }).then((mongoose) => {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000, // Increased timeout
+      socketTimeoutMS: 45000,
+      family: 4
+    };
+
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      console.log('✅ MongoDB connected successfully');
       return mongoose;
+    }).catch((error) => {
+      console.error('❌ MongoDB connection error:', error instanceof Error ? error.message : 'Unknown error');
+      // Reset the promise so we can retry
+      cached.promise = null;
+      throw error;
     });
   }
-  cached.conn = await cached.promise;
-  return cached.conn;
+  
+  try {
+    cached.conn = await cached.promise;
+    return cached.conn;
+  } catch (error) {
+    cached.promise = null;
+    console.error('❌ Database connection failed:', error instanceof Error ? error.message : 'Unknown error');
+    throw error;
+  }
 }
 
 export default dbConnect; 

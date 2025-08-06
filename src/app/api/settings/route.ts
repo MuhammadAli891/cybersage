@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
-
-// In-memory settings storage (in production, you'd use a database)
-let settings = {
-  siteName: 'CyberSage',
-  siteDescription: 'Find the Answers Just When you Think of the Questions',
-  siteUrl: 'https://cybersage.com',
-  adminEmail: 'admin@cybersage.com',
-  postsPerPage: 10,
-  enableComments: true,
-  enableSocialSharing: true,
-  enableNewsletter: false,
-  maintenanceMode: false,
-  maintenanceMessage: 'We are currently performing maintenance. Please check back soon!'
-};
+import Settings from '@/models/Settings';
 
 export async function GET() {
   try {
     await dbConnect();
     
-    return NextResponse.json({ settings });
+    // Get settings from database or create default
+    let settings = await Settings.findOne({});
+    
+    if (!settings) {
+      // Create default settings if none exist
+      settings = new Settings();
+      await settings.save();
+    }
+    
+    return NextResponse.json({ settings: settings.toObject() });
   } catch (error) {
     console.error('Error fetching settings:', error);
     return NextResponse.json(
@@ -29,33 +25,33 @@ export async function GET() {
   }
 }
 
-import fs from 'fs';
-import path from 'path';
-
 export async function POST(request: NextRequest) {
   try {
     await dbConnect();
     
     const body = await request.json();
     
-    // Update settings
-    settings = { ...settings, ...body };
+    // Find existing settings or create new ones
+    let settings = await Settings.findOne({});
     
-    // Update maintenance mode file
-    if (typeof body.maintenanceMode === 'boolean') {
-      const maintenancePath = path.join(process.cwd(), 'maintenance.json');
-      const maintenanceData = { maintenanceMode: body.maintenanceMode };
-      fs.writeFileSync(maintenancePath, JSON.stringify(maintenanceData, null, 2));
-      console.log('Maintenance mode updated in file:', body.maintenanceMode);
-      console.log('File written to:', maintenancePath);
-      console.log('File content:', JSON.stringify(maintenanceData, null, 2));
+    if (!settings) {
+      settings = new Settings();
     }
     
-    console.log('Settings updated:', settings);
+    // Update settings with new values
+    Object.keys(body).forEach(key => {
+      if (settings.schema.paths[key]) {
+        settings[key] = body[key];
+      }
+    });
+    
+    await settings.save();
+    
+    console.log('Settings updated successfully:', settings.toObject());
     
     return NextResponse.json({ 
       message: 'Settings saved successfully',
-      settings 
+      settings: settings.toObject()
     });
   } catch (error) {
     console.error('Error saving settings:', error);

@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Posts API called');
     console.log('📡 MONGODB_URI exists:', !!process.env.MONGODB_URI);
-    console.log('📡 MONGODB_URI length:', process.env.MONGODB_URI?.length);
     
     await dbConnect();
     console.log('✅ Database connected successfully');
@@ -16,8 +15,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const category = searchParams.get('category');
     const all = searchParams.get('all'); // For admin panel
+    const timestamp = searchParams.get('t'); // Cache busting
     
-    console.log('🔍 Query params:', { showOnHomepage, limit, category, all });
+    console.log('🔍 Query params:', { showOnHomepage, limit, category, all, timestamp });
     
     // Build query object
     const query: any = {};
@@ -53,14 +53,28 @@ export async function GET(request: NextRequest) {
     console.log('📝 Found posts:', posts.length);
     console.log('📝 Posts data:', posts);
     
-    // Add cache headers only for public requests, but not for homepage requests
-    const response = NextResponse.json({ posts });
-    if (all !== 'true' && showOnHomepage !== 'true') {
-      response.headers.set('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+    // Ensure we return the posts array properly
+    const responseData = { posts: posts || [] };
+    console.log('📤 Response data:', responseData);
+    
+    // Add cache headers based on request type
+    const response = NextResponse.json(responseData);
+    
+    if (showOnHomepage === 'true') {
+      // Aggressive no-caching for homepage requests to ensure dynamic updates
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      response.headers.set('Surrogate-Control', 'no-store');
+      response.headers.set('ETag', `posts-homepage-${posts.length}-${Date.now()}`);
+      response.headers.set('Last-Modified', new Date().toUTCString());
+    } else if (all !== 'true') {
+      // Cache for 5 minutes for regular requests
+      response.headers.set('Cache-Control', 'public, max-age=300');
       response.headers.set('ETag', `posts-${posts.length}-${Date.now()}`);
-    } else if (showOnHomepage === 'true') {
-      // No caching for homepage requests to ensure dynamic updates
-      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      // No caching for admin requests
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
       response.headers.set('Pragma', 'no-cache');
       response.headers.set('Expires', '0');
     }

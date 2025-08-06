@@ -105,6 +105,14 @@ export default function CreatePost() {
       });
 
       if (response.ok) {
+        // Clear cache after successful creation
+        try {
+          await fetch('/api/cache/clear', { method: 'POST' });
+          console.log('✅ Cache cleared after post creation');
+        } catch (cacheError) {
+          console.error('❌ Error clearing cache:', cacheError);
+        }
+        
         router.push('/admin');
       } else {
         const error = await response.json();

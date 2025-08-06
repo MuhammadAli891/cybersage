@@ -78,16 +78,17 @@ export default function HomePage() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [stars, setStars] = useState<Array<{id: number, left: string, top: string, delay: string, duration: string, opacity: number}>>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Memoized stars generation
+  // Memoized stars generation - using fixed values to prevent hydration issues
   const generatedStars = useMemo(() => {
     return [...Array(50)].map((_, i) => ({
       id: i,
-      left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 80 + 10}%`,
-      delay: `${Math.random() * 10}s`,
-      duration: `${Math.random() * 10 + 10}s`,
-      opacity: Math.random() * 0.8 + 0.2
+      left: `${(i * 7.3) % 100}%`,
+      top: `${(i * 3.7 + 10) % 80}%`,
+      delay: `${(i * 0.2) % 10}s`,
+      duration: `${(i * 0.3 + 10) % 10 + 10}s`,
+      opacity: ((i * 0.1) % 0.8) + 0.2
     }));
   }, []);
 
@@ -96,30 +97,62 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (mounted) {
-      fetchPosts();
+    if (mounted && typeof window !== 'undefined') {
       checkMaintenanceMode();
+      fetchPosts();
       
-      // Set up periodic refresh every 30 seconds to check for updates
+      // Auto-refresh posts every 30 seconds to catch admin changes
       const interval = setInterval(() => {
-        fetchPosts(false); // Don't show refreshing state for auto-refresh
-        checkMaintenanceMode();
+        fetchPosts(true);
       }, 30000);
       
       return () => clearInterval(interval);
     }
   }, [mounted]);
 
+  // Force refresh function that clears browser cache
+  const forceRefresh = async () => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      setRefreshing(true);
+      
+      // Clear any local storage cache
+      localStorage.removeItem('homepage-posts-cache');
+      sessionStorage.removeItem('homepage-posts-cache');
+      
+      // Call cache clear API
+      await fetch('/api/cache/clear', { method: 'POST' });
+      
+      // Wait a moment for cache to clear
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Fetch fresh posts
+      await fetchPosts(true);
+      
+      console.log('🔄 Force refresh completed');
+    } catch (error) {
+      console.error('❌ Error during force refresh:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    setStars(generatedStars);
+    // Only set stars on client side to prevent hydration issues
+    if (typeof window !== 'undefined') {
+      setStars(generatedStars);
+    }
   }, [generatedStars]);
 
   const checkMaintenanceMode = async () => {
+    if (typeof window === 'undefined') return;
+    
     try {
       const response = await fetch('/api/maintenance');
       const data = await response.json();
       setMaintenanceMode(data.maintenanceMode);
-      console.log('Maintenance mode checked:', data.maintenanceMode);
+      setMaintenanceMessage(data.maintenanceMessage);
     } catch (error) {
       console.error('Error checking maintenance mode:', error);
     }
@@ -131,23 +164,45 @@ export default function HomePage() {
         setRefreshing(true);
       }
       
-      // Use a stable cache-busting approach
-      const response = await fetch('/api/posts?showOnHomepage=true&limit=8', {
+      console.log('🔍 Fetching posts from API...');
+      
+      // Add cache-busting parameters only on client side
+      const timestamp = typeof window !== 'undefined' ? Date.now() : 0;
+      const random = typeof window !== 'undefined' ? Math.random() : 0;
+      const cacheVersion = typeof window !== 'undefined' ? ((global as any).__CACHE_VERSION__ || timestamp) : 0;
+      const url = `/api/posts/homepage?limit=8&t=${timestamp}&r=${random}&v=${timestamp}&cv=${cacheVersion}`;
+      
+      console.log('🔗 Fetching URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0'
-        }
+          'Expires': '0',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Cache-Bust': timestamp.toString()
+        },
+        cache: 'no-store'
       });
+      
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      
       const data = await response.json();
       
-      console.log('Homepage posts:', data.posts);
+      console.log('📝 API response:', data);
+      console.log('📝 Posts array:', data.posts);
+      console.log('📝 Posts length:', data.posts?.length);
       
       if (data.posts) {
         setPosts(data.posts);
+        console.log('✅ Posts set successfully:', data.posts.length);
+      } else {
+        console.log('❌ No posts in response');
       }
     } catch (error) {
-      console.error('Error fetching posts:', error);
+      console.error('❌ Error fetching posts:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -241,6 +296,8 @@ export default function HomePage() {
               <span className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 bg-clip-text text-transparent text-xl font-extrabold">Sage</span>
             </div>
           </Link>
+          
+          {/* Desktop Navigation */}
           <ul className="hidden md:flex space-x-8 text-sm font-semibold text-white">
             <li><Link href="/category/news" className="hover:text-cyan-300 transition-colors duration-300">News</Link></li>
             <li><Link href="/category/global-tech-news" className="hover:text-cyan-300 transition-colors duration-300">Global Tech News</Link></li>
@@ -250,14 +307,159 @@ export default function HomePage() {
             <li><Link href="/category/gaming" className="hover:text-cyan-300 transition-colors duration-300">Gaming</Link></li>
             <li><Link href="/category/social-media" className="hover:text-cyan-300 transition-colors duration-300">Social Media</Link></li>
           </ul>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors duration-300"
+          >
+            <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-white text-xl`}></i>
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-50">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black"
+              onClick={() => setIsMobileMenuOpen(false)}
+            ></div>
+            
+            {/* Menu Container */}
+            <div className="absolute right-0 top-0 h-full w-80 bg-gray-900 shadow-2xl border-l border-cyan-300/50 transform transition-transform duration-300 ease-in-out">
+              {/* Menu Header */}
+              <div className="bg-gray-800 p-6 border-b border-cyan-300/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center">
+                      <i className="fas fa-bars text-white text-sm"></i>
+                    </div>
+                    <span className="text-white font-bold text-lg">Menu</span>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-600 transition-colors"
+                  >
+                    <i className="fas fa-times text-white"></i>
+                  </button>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <div className="p-6 space-y-2">
+                <div className="text-cyan-300 text-xs font-semibold uppercase tracking-wider mb-4 px-2">
+                  Categories
+                </div>
+                
+                <Link
+                  href="/category/news"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-newspaper text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">News</div>
+                    <div className="text-cyan-200 text-xs">Latest updates</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/global-tech-news"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-globe text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Global Tech News</div>
+                    <div className="text-cyan-200 text-xs">Worldwide tech</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/internet"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-wifi text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Internet</div>
+                    <div className="text-cyan-200 text-xs">Web & connectivity</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/tech"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-microchip text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Tech</div>
+                    <div className="text-cyan-200 text-xs">Technology insights</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/business"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-briefcase text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Business</div>
+                    <div className="text-cyan-200 text-xs">Business strategies</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/gaming"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-gamepad text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Gaming</div>
+                    <div className="text-cyan-200 text-xs">Gaming industry</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/category/social-media"
+                  className="flex items-center space-x-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-transparent hover:border-cyan-300/50 transition-all duration-300 group"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className="w-10 h-10 tech-gradient rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <i className="fas fa-share-alt text-white text-sm"></i>
+                  </div>
+                  <div>
+                    <div className="text-white font-semibold group-hover:text-cyan-300 transition-colors">Social Media</div>
+                    <div className="text-cyan-200 text-xs">Social platforms</div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900">
         {/* Night sky background with stars */}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900">
-          {stars.map((star) => (
+          {typeof window !== 'undefined' && stars.map((star) => (
             <Star key={star.id} star={star} />
           ))}
         </div>
@@ -497,19 +699,18 @@ export default function HomePage() {
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
-            <p className="text-cyan-300 text-sm mb-2">Our Blogs</p>
-            <h2 className="text-3xl lg:text-4xl font-bold text-white">Explore What&apos;s New</h2>
-            {mounted && (
-              <button 
-                onClick={() => fetchPosts(true)}
-                className="mt-4 tech-gradient text-white px-6 py-2 rounded-full text-sm font-semibold hover:scale-105 transition-transform duration-300"
-                title="Refresh posts"
+            <div className="flex items-center justify-center space-x-4 mb-4">
+              <p className="text-cyan-300 text-sm">Our Blogs</p>
+              <button
+                onClick={forceRefresh}
                 disabled={refreshing}
+                className="text-cyan-300 hover:text-cyan-200 transition-colors disabled:opacity-50"
+                title="Force refresh posts (clears cache)"
               >
-                <i className={`fas fa-sync-alt mr-2 ${refreshing ? 'animate-spin' : ''}`}></i>
-                {refreshing ? 'Refreshing...' : 'Refresh Posts'}
+                <i className={`fas ${refreshing ? 'fa-spinner fa-spin' : 'fa-sync-alt'} text-sm`}></i>
               </button>
-            )}
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold text-white">Explore What&apos;s New</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -524,13 +725,6 @@ export default function HomePage() {
                 <i className="fas fa-newspaper text-cyan-400 text-6xl mb-6"></i>
                 <h3 className="text-white text-2xl font-semibold mb-4">No posts available</h3>
                 <p className="text-cyan-100 mb-6">No posts are set to show on homepage yet.</p>
-                <Link 
-                  href="/admin/posts/create" 
-                  className="tech-gradient text-white text-sm px-6 py-3 rounded-full button-hover font-semibold"
-                >
-                  <i className="fas fa-plus mr-2"></i>
-                  Create First Post
-                </Link>
               </div>
             )}
           </div>

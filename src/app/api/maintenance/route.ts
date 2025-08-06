@@ -1,19 +1,23 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import dbConnect from '@/lib/db';
+import Settings from '@/models/Settings';
 
 export async function GET() {
   try {
-    const maintenancePath = path.join(process.cwd(), 'maintenance.json');
+    await dbConnect();
     
-    if (fs.existsSync(maintenancePath)) {
-      const maintenanceData = JSON.parse(fs.readFileSync(maintenancePath, 'utf8'));
-      return NextResponse.json({ maintenanceMode: maintenanceData.maintenanceMode });
+    const settings = await Settings.findOne({});
+    
+    if (!settings) {
+      return NextResponse.json({ maintenanceMode: false });
     }
     
-    return NextResponse.json({ maintenanceMode: false });
+    return NextResponse.json({ 
+      maintenanceMode: settings.maintenanceMode || false,
+      maintenanceMessage: settings.maintenanceMessage || 'We are currently performing maintenance. Please check back soon!'
+    });
   } catch (error) {
-    console.error('Error reading maintenance mode:', error);
+    console.error('Error checking maintenance mode:', error);
     return NextResponse.json({ maintenanceMode: false });
   }
 } 

@@ -43,7 +43,4 @@ const CategorySchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Add indexes for better performance
-CategorySchema.index({ slug: 1 }, { unique: true });
-
 export default mongoose.models.Category || mongoose.model('Category', CategorySchema); 

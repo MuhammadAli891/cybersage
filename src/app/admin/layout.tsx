@@ -6,121 +6,118 @@ import { usePathname } from 'next/navigation';
 
 export default function AdminLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname();
-
-  const navigation = [
-    { name: 'Dashboard', href: '/admin', icon: 'fas fa-tachometer-alt' },
-    { name: 'Posts', href: '/admin/posts', icon: 'fas fa-file-alt' },
-    { name: 'Categories', href: '/admin/categories', icon: 'fas fa-folder' },
-    { name: 'SEO Tools', href: '/admin/seo', icon: 'fas fa-search' },
-    { name: 'Analytics', href: '/admin/analytics', icon: 'fas fa-chart-bar' },
-    { name: 'Settings', href: '/admin/settings', icon: 'fas fa-cog' },
-  ];
+}) {
+  const handleClearCache = async () => {
+    try {
+      console.log('🧹 Admin clearing cache...');
+      
+      // Clear browser cache for homepage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('homepage-posts-cache');
+        sessionStorage.removeItem('homepage-posts-cache');
+        
+        // Force browser to reload homepage cache
+        const homepageUrl = `${window.location.origin}/api/posts/homepage`;
+        await fetch(homepageUrl, { 
+          method: 'GET',
+          headers: { 'Cache-Control': 'no-cache' },
+          cache: 'no-store'
+        });
+      }
+      
+      // Call server cache clear API
+      const response = await fetch('/api/cache/clear', {
+        method: 'POST',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Cache cleared:', result);
+        alert('Cache cleared successfully! Homepage will refresh on next visit.');
+      } else {
+        console.error('❌ Failed to clear cache');
+        alert('Failed to clear cache');
+      }
+    } catch (error) {
+      console.error('❌ Error clearing cache:', error);
+      alert('Error clearing cache');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        >
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75"></div>
-        </div>
-      )}
-
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        <div className="flex items-center justify-between h-16 px-4 lg:px-6 border-b">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+      <div className="w-64 bg-white shadow-sm border-r">
+        <div className="p-6">
+          <div className="flex items-center space-x-2 mb-8">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
               <i className="fas fa-brain text-white text-sm"></i>
             </div>
-            <span className="text-lg lg:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              CyberSage
-            </span>
+            <span className="text-xl font-bold text-gray-900">CyberSage</span>
           </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-gray-500 hover:text-gray-700"
-          >
-            <i className="fas fa-times text-lg"></i>
-          </button>
+          
+          <nav className="space-y-2">
+            <Link href="/admin" className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
+              <i className="fas fa-tachometer-alt w-5"></i>
+              <span>Dashboard</span>
+            </Link>
+            <Link href="/admin/posts" className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
+              <i className="fas fa-file-alt w-5"></i>
+              <span>Posts</span>
+            </Link>
+            <Link href="/admin/categories" className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
+              <i className="fas fa-folder w-5"></i>
+              <span>Categories</span>
+            </Link>
+            <Link href="/admin/seo" className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
+              <i className="fas fa-search w-5"></i>
+              <span>SEO Tools</span>
+            </Link>
+            <Link href="/admin/analytics" className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
+              <i className="fas fa-chart-bar w-5"></i>
+              <span>Analytics</span>
+            </Link>
+            <Link href="/admin/settings" className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
+              <i className="fas fa-cog w-5"></i>
+              <span>Settings</span>
+            </Link>
+          </nav>
+
+          {/* Cache Management Section */}
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">System Tools</h3>
+            <button
+              onClick={handleClearCache}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+            >
+              <i className="fas fa-broom w-5"></i>
+              <span>Clear Cache</span>
+            </button>
+          </div>
         </div>
-
-        <nav className="mt-4 lg:mt-6 px-3">
-          <div className="space-y-1">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`group flex items-center px-3 py-2 lg:py-3 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <i className={`${item.icon} mr-3 text-lg ${
-                    isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
-                  }`}></i>
-                  {item.name}
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* Admin Info */}
-          <div className="mt-6 lg:mt-8 px-3">
-            <div className="bg-gray-50 rounded-lg p-3 lg:p-4">
-              <div className="flex items-center">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <i className="fas fa-user text-white text-sm"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">Admin User</p>
-                  <p className="text-xs text-gray-500">admin@cybersage.com</p>
-                </div>
-              </div>
+        
+        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+              <i className="fas fa-user text-gray-600"></i>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Admin User</p>
+              <p className="text-xs text-gray-500">admin@cybersage.com</p>
             </div>
           </div>
-        </nav>
+        </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 lg:pl-0">
-        {/* Mobile header */}
-        <div className="lg:hidden bg-white shadow-sm border-b">
-          <div className="flex items-center justify-between px-4 py-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <i className="fas fa-bars text-lg"></i>
-            </button>
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center mr-3">
-                <i className="fas fa-brain text-white text-sm"></i>
-              </div>
-              <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                CyberSage
-              </span>
-            </div>
-            <div className="w-8"></div>
-          </div>
-        </div>
-
-        {/* Page content */}
-        <main className="flex-1">
-          {children}
-        </main>
+      {/* Main Content */}
+      <div className="flex-1">
+        {children}
       </div>
     </div>
   );
